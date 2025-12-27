@@ -1,6 +1,6 @@
 """Event schemas for the lease payment system."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime, date
 from uuid import UUID
 from decimal import Decimal
@@ -10,16 +10,15 @@ from typing import Optional
 class BaseEvent(BaseModel):
     """Base event schema with common fields."""
 
+    model_config = ConfigDict(json_encoders={
+        UUID: str,
+        Decimal: float,
+        datetime: lambda v: v.isoformat(),
+    })
+
     event_id: str = Field(default_factory=lambda: str(UUID('00000000-0000-0000-0000-000000000000')))
     event_type: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-
-    class Config:
-        json_encoders = {
-            UUID: str,
-            Decimal: float,
-            datetime: lambda v: v.isoformat(),
-        }
 
 
 class LeaseCreatedEvent(BaseEvent):

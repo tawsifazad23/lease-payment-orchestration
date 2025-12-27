@@ -76,6 +76,14 @@ class EventPersister:
             await self.repo.rollback()
             raise
 
+    async def commit(self):
+        """Commit the current transaction."""
+        await self.repo.commit()
+
+    async def rollback(self):
+        """Rollback the current transaction."""
+        await self.repo.rollback()
+
     async def persist_lease_created(
         self,
         event: LeaseCreatedEvent,

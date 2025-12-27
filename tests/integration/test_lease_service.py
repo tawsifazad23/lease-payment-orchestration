@@ -174,7 +174,7 @@ class TestLeaseService:
     """Test Lease Service business logic."""
 
     @pytest.mark.asyncio
-    async def test_create_lease(self, test_db_session):
+    async def test_create_lease(self, test_db_session, mock_event_bus_initialized):
         """Test creating a lease."""
         service = LeaseService(test_db_session)
 
@@ -192,7 +192,7 @@ class TestLeaseService:
         assert len(payments) == 12
 
     @pytest.mark.asyncio
-    async def test_create_lease_idempotency(self, test_db_session):
+    async def test_create_lease_idempotency(self, test_db_session, mock_event_bus_initialized):
         """Test that duplicate lease creation is prevented."""
         service = LeaseService(test_db_session)
         key = "idem-lease-idempotent"
@@ -242,7 +242,7 @@ class TestLeaseService:
             )
 
     @pytest.mark.asyncio
-    async def test_get_lease(self, test_db_session):
+    async def test_get_lease(self, test_db_session, mock_event_bus_initialized):
         """Test retrieving a lease by ID."""
         service = LeaseService(test_db_session)
 
@@ -260,7 +260,7 @@ class TestLeaseService:
         assert retrieved.customer_id == "CUST-005"
 
     @pytest.mark.asyncio
-    async def test_update_lease_status_valid(self, test_db_session):
+    async def test_update_lease_status_valid(self, test_db_session, mock_event_bus_initialized):
         """Test updating lease status with valid transition."""
         service = LeaseService(test_db_session)
 
@@ -276,7 +276,7 @@ class TestLeaseService:
         assert updated.status == LeaseStatus.ACTIVE
 
     @pytest.mark.asyncio
-    async def test_update_lease_status_invalid(self, test_db_session):
+    async def test_update_lease_status_invalid(self, test_db_session, mock_event_bus_initialized):
         """Test updating lease status with invalid transition."""
         service = LeaseService(test_db_session)
 
@@ -291,7 +291,7 @@ class TestLeaseService:
             await service.update_lease_status(lease.id, LeaseStatus.DEFAULTED)
 
     @pytest.mark.asyncio
-    async def test_check_and_complete_lease(self, test_db_session):
+    async def test_check_and_complete_lease(self, test_db_session, mock_event_bus_initialized):
         """Test lease auto-completion when all payments done."""
         service = LeaseService(test_db_session)
 
@@ -326,7 +326,7 @@ class TestLeaseService:
         assert updated_lease.status == LeaseStatus.COMPLETED
 
     @pytest.mark.asyncio
-    async def test_check_and_default_lease(self, test_db_session):
+    async def test_check_and_default_lease(self, test_db_session, mock_event_bus_initialized):
         """Test lease auto-default when 3+ payments failed."""
         service = LeaseService(test_db_session)
 
@@ -400,7 +400,7 @@ class TestLeaseAPI:
         assert response.status_code == 422  # Validation error
 
     @pytest.mark.asyncio
-    async def test_get_lease_endpoint(self, test_db_session):
+    async def test_get_lease_endpoint(self, test_db_session, mock_event_bus_initialized):
         """Test GET /api/v1/leases/{lease_id} endpoint."""
         service = LeaseService(test_db_session)
 
@@ -416,7 +416,7 @@ class TestLeaseAPI:
         assert lease.id is not None
 
     @pytest.mark.asyncio
-    async def test_get_lease_history_endpoint(self, test_db_session):
+    async def test_get_lease_history_endpoint(self, test_db_session, mock_event_bus_initialized):
         """Test GET /api/v1/leases/{lease_id}/history endpoint."""
         service = LeaseService(test_db_session)
 

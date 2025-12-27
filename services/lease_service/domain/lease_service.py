@@ -101,9 +101,13 @@ class LeaseService:
 
         if is_duplicate and cached_response:
             logger.info(f"Duplicate lease creation (idempotency key: {idempotency_key})")
-            # In production, would reconstruct the lease from cached response
-            # For now, we'll re-fetch from DB
-            pass
+            # Reconstruct the lease from cached response
+            lease_id = UUID(cached_response["lease_id"])
+            cached_lease = await self.lease_repo.get_by_id(lease_id)
+            if cached_lease:
+                # Return cached lease with its payments
+                cached_payments = await self.payment_repo.get_by_lease_id(lease_id)
+                return cached_lease, cached_payments
 
         try:
             # Create lease
@@ -289,10 +293,17 @@ class LeaseService:
         # All payments are paid, complete the lease
         await self.update_lease_status(lease_id, LeaseStatus.COMPLETED)
 
+        # Calculate total paid from completed payments
+        paid_payments = await self.payment_repo.get_by_lease_and_status(
+            lease_id, PaymentStatus.PAID
+        )
+        total_paid = sum(p.amount for p in paid_payments) if paid_payments else Decimal("0")
+
         # Emit completion event
         event = LeaseCompletedEvent(
             lease_id=lease_id,
             customer_id=lease.customer_id,
+            total_paid=total_paid,
         )
 
         await self.event_persister.persist_lease_completed(event)

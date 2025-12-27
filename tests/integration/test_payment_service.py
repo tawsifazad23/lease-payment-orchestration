@@ -80,30 +80,27 @@ class TestPaymentService:
     """Test Payment Service business logic."""
 
     @pytest.mark.asyncio
-    async def test_schedule_payments_for_lease(self, test_db_session):
+    async def test_schedule_payments_for_lease(self, test_db_session, mock_event_bus_initialized):
         """Test scheduling payments for a lease."""
         service = PaymentService(test_db_session)
         lease_id = uuid4()
 
-        # Create payment schedules
-        payments = [
-            PaymentSchedule(
+        # Create and save payment schedules to database
+        payment_repo = PaymentRepository(test_db_session)
+        payments = []
+        for i in range(1, 3):
+            payment = PaymentSchedule(
                 lease_id=lease_id,
-                installment_number=1,
-                due_date=date(2025, 1, 15),
+                installment_number=i,
+                due_date=date(2025, 1 + i, 15),
                 amount=Decimal("300.00"),
-            ),
-            PaymentSchedule(
-                lease_id=lease_id,
-                installment_number=2,
-                due_date=date(2025, 2, 15),
-                amount=Decimal("300.00"),
-            ),
-        ]
+            )
+            saved = await payment_repo.create(payment)
+            payments.append(saved)
+        await payment_repo.commit()
 
-        # Mock event bus
-        with patch("shared.event_bus.event_bus.publish_event", new_callable=AsyncMock):
-            events = await service.schedule_payments_for_lease(lease_id, payments)
+        # Schedule payments
+        events = await service.schedule_payments_for_lease(lease_id, payments)
 
         assert len(events) == 2
         assert events[0].payment_id == payments[0].id

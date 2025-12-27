@@ -72,3 +72,30 @@ def mock_celery_task():
     task = MagicMock()
     task.delay = MagicMock(return_value=MagicMock(id="task-123"))
     return task
+
+
+@pytest.fixture
+async def mock_event_bus_initialized():
+    """Initialize event bus with mock Redis for testing."""
+    from shared.event_bus import event_bus
+    from shared.redis_client import RedisClient
+
+    # Mock Redis client
+    mock_redis = AsyncMock()
+    mock_redis.publish = AsyncMock(return_value=1)
+    mock_redis.setex = AsyncMock(return_value=True)
+
+    # Patch RedisClient.get_client to return mock
+    original_get_client = RedisClient.get_client
+    RedisClient.get_client = AsyncMock(return_value=mock_redis)
+
+    # Initialize event bus
+    await event_bus.initialize()
+
+    yield event_bus
+
+    # Cleanup
+    RedisClient.get_client = original_get_client
+    event_bus.publisher = None
+    event_bus.consumer = None
+    event_bus.dlq = None
