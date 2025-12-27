@@ -1,0 +1,133 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lease_postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-lease_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-lease_pass}
+      POSTGRES_DB: ${DB_NAME:-lease_db}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-lease_user} -d ${DB_NAME:-lease_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lease_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: lease_redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lease_network
+
+  lease_service:
+    build:
+      context: .
+      dockerfile: services/lease_service/Dockerfile
+    container_name: lease_service
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-lease_user}:${DB_PASSWORD:-lease_pass}@postgres:5432/${DB_NAME:-lease_db}
+      REDIS_URL: redis://redis:6379/0
+      SERVICE_NAME: lease_service
+      SERVICE_PORT: 8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/lease_service:/app/services/lease_service
+      - ./shared:/app/shared
+    networks:
+      - lease_network
+
+  payment_service:
+    build:
+      context: .
+      dockerfile: services/payment_service/Dockerfile
+    container_name: payment_service
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-lease_user}:${DB_PASSWORD:-lease_pass}@postgres:5432/${DB_NAME:-lease_db}
+      REDIS_URL: redis://redis:6379/0
+      SERVICE_NAME: payment_service
+      SERVICE_PORT: 8001
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/payment_service:/app/services/payment_service
+      - ./shared:/app/shared
+    networks:
+      - lease_network
+
+  ledger_service:
+    build:
+      context: .
+      dockerfile: services/ledger_service/Dockerfile
+    container_name: ledger_service
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-lease_user}:${DB_PASSWORD:-lease_pass}@postgres:5432/${DB_NAME:-lease_db}
+      REDIS_URL: redis://redis:6379/0
+      SERVICE_NAME: ledger_service
+      SERVICE_PORT: 8002
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/ledger_service:/app/services/ledger_service
+      - ./shared:/app/shared
+    networks:
+      - lease_network
+
+  event_bus:
+    build:
+      context: .
+      dockerfile: services/event_bus/Dockerfile
+    container_name: event_bus
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      SERVICE_NAME: event_bus
+      SERVICE_PORT: 8003
+    ports:
+      - "8003:8003"
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/event_bus:/app/services/event_bus
+      - ./shared:/app/shared
+    networks:
+      - lease_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  lease_network:
+    driver: bridge
