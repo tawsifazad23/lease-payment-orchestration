@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 
 from shared.config import settings
 from shared.database import init_db, close_db
+from services.ledger_service.api import routes
 
 # Configure logging
 logging.basicConfig(
@@ -33,6 +34,9 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# Include routers
+app.include_router(routes.router)
 
 
 # Health check endpoints
