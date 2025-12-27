@@ -1,53 +1,45 @@
 # Lease Payment Orchestration System
 
-A production-ready, event-driven microservices architecture for managing lease agreements and payment processing with idempotent transaction handling, event sourcing, and comprehensive audit trails.
+A production-style, event-driven microservices architecture for managing lease agreements and payment processing with idempotent transaction handling, event sourcing, and comprehensive audit trails.
 
-**Status**: All 86 tests passing | 55% code coverage | Production-ready
+**Status**: All tests passing (86) · Fully runnable via Docker · Comprehensive integration testing
 
-## Features
+## Why I Built This
 
-### Core Functionality
-- **Lease Management**: Create, retrieve, and manage lease agreements with state machine validation
-- **Payment Processing**: Schedule, process, and track lease payment installments
-- **Event Sourcing**: Complete audit trail of all system events with state reconstruction
-- **Idempotent Operations**: Prevent duplicate transactions using idempotency keys (24-hour TTL)
-- **Event-Driven Architecture**: Redis pub/sub for inter-service communication with dead letter queue support
+This project grew out of real-world experience with fragile, multi-step workflows where retries were unsafe and humans were responsible for tracking state. I built it to practice designing systems where failures are expected, retries are safe, and every decision is auditable.
 
-### Advanced Features
-- **Payment Retry Logic**: Exponential backoff with configurable retry attempts
-- **Early Payoff**: Calculate and process early lease payoff with automatic discount
-- **Auto-Completion**: Automatically complete leases when all payments are processed
-- **Auto-Default**: Automatically default leases after 3+ failed payment attempts
-- **Historical State Reconstruction**: Query lease state at any point in time using event sourcing
-- **Comprehensive Audit Trail**: JSON/CSV export of all events and state changes
-- **Performance Monitoring**: Load testing and benchmarking infrastructure
+## Core Features
+
+- **Idempotent Financial Operations**: Prevent duplicate charges using idempotency keys with 24-hour TTL
+- **Event-Sourced Audit Ledger**: Complete immutable record of all state changes for compliance and debugging
+- **Explicit Lease State Machine**: PENDING → ACTIVE → COMPLETED/DEFAULTED with validated transitions
+- **Safe Payment Retries**: Exponential backoff with configurable retry attempts and dead letter queue
+- **Early Payoff Handling**: Calculate discounts and process early lease completion
+
+## Additional Capabilities
+
+- Auto-completion when all payments received
+- Auto-defaulting after 3+ failed payment attempts
+- Historical state reconstruction at any point in time
+- JSON/CSV audit trail export
+- Load testing and performance benchmarking infrastructure
 
 ## What This Demonstrates
 
-This project showcases skills directly applicable to fintech and payment processing platforms:
-
-**Backend Engineering**
-- Event-driven microservices architecture with Redis pub/sub
+**Backend & Platform Engineering**
+- Event-driven architecture with safe async patterns (FastAPI, asyncpg, Redis pub/sub)
 - Idempotent API design preventing duplicate financial transactions
-- State machine implementation for lease lifecycle management
-- Async/await patterns with FastAPI and asyncpg
+- Explicit state machines for lifecycle management
 
-**Data Engineering**
-- Event sourcing with append-only ledger for complete audit trails
-- Historical state reconstruction from event logs
-- JSON/CSV export for regulatory reporting
+**Data & Correctness**
+- Append-only event ledger enabling full auditability
+- Event replay for deterministic state reconstruction
+- Recoverable failure handling via event history
 
-**Production Readiness**
-- Comprehensive test coverage (86 tests, 55% coverage)
-- Performance benchmarking and load testing infrastructure
-- Health checks, metrics endpoints, structured logging
-- Docker containerization with PostgreSQL + Redis
-
-**Domain Knowledge**
-- Payment retry logic with exponential backoff
-- Early payoff calculations with discounting
-- Failed payment detection and lease defaulting
-- Regulatory compliance considerations (audit trails, idempotency)
+**Real-World Constraints**
+- Retry semantics with exponential backoff
+- Graceful degradation under load
+- Complete audit trail for compliance
 
 ## Architecture
 
@@ -83,6 +75,8 @@ This project showcases skills directly applicable to fintech and payment process
    │   Cache   │           │  (Event Bus+DLQ)  │    │                 │
    └──────────┘           └───────────────────┘    └─────────────────┘
 ```
+
+Designed to mirror real-world fintech service boundaries while remaining fully runnable locally via Docker.
 
 ### Data Flow
 
@@ -403,7 +397,7 @@ Terminal states: COMPLETED, DEFAULTED
 ### Payment Processing Flow
 
 1. **Schedule**: Lease created → Payment schedule generated (12 installments)
-2. **Attempt**: Payment attempt initiated → 70% success rate simulation
+2. **Attempt**: Payment attempt initiated → 70% success rate (simulated for demonstration/testing purposes)
 3. **Success**: Mark as PAID → Reduce remaining balance
 4. **Failure**: Mark as FAILED → Increment retry count → Schedule retry (exponential backoff)
 5. **Default**: 3+ failures → Mark lease as DEFAULTED → Send notification
@@ -440,6 +434,8 @@ Asynchronous event publishing decouples services:
 - **Scalability**: Multiple consumers can subscribe to the same events
 - **Simplicity**: Lightweight alternative to RabbitMQ/Kafka for this scale
 
+This choice favors clarity and practicality over extreme scale; the design intentionally allows swapping in Kafka or RabbitMQ without changing domain logic.
+
 ### Why Idempotency Keys?
 Financial operations must be idempotent to prevent duplicate charges:
 - **Network Retries**: Client can safely retry without duplicating operations
@@ -467,7 +463,7 @@ Strong typing at API boundaries prevents invalid data from entering the system:
 
 ## Performance Results
 
-Benchmarked on SQLite in-memory database with 100 iterations per operation:
+Benchmarks focus on relative behavior and correctness under load rather than absolute production throughput. Measured on SQLite in-memory database with 100 iterations per operation:
 
 | Operation | Avg | P95 | P99 | Target | Status |
 |-----------|-----|-----|-----|--------|--------|
@@ -480,20 +476,7 @@ All operations meet or exceed performance targets. Production PostgreSQL perform
 
 ## Load Testing
 
-Run load tests with Locust:
-
-```bash
-# Interactive UI
-locust -f tests/load/locustfile.py
-
-# Headless mode (10 users, 5 minutes)
-locust -f tests/load/locustfile.py \
-  --host=http://localhost:8000 \
-  --users 10 \
-  --spawn-rate 1 \
-  --run-time 5m \
-  --headless
-```
+System gracefully degrades under load. Run `locust -f tests/load/locustfile.py` for interactive testing or add `--headless` flag for automated runs.
 
 ## Configuration
 
@@ -559,71 +542,16 @@ Prometheus metrics available at:
 
 All services log to stdout in JSON format for easy parsing by log aggregators (ELK, DataDog, etc.).
 
-## Production Considerations
+## Extensions and Real-World Considerations
 
-### Payment Integration
-The current implementation includes a simulated payment gateway with a 70% success rate for demonstration purposes. For production:
-- **Integrate Real Payment Processor**: Replace `PaymentGateway` in `services/payment_service/domain/payment_gateway.py` with Stripe, Square, or your preferred provider
-- **PCI Compliance**: Never store raw credit card data; use tokenization from your payment processor
-- **Webhook Verification**: Validate webhook signatures from payment processors to prevent replay attacks
-- **Rate Limiting**: Implement rate limiting on payment endpoints to prevent abuse
+To move toward production, consider:
 
-### Scaling Considerations
-- **Database**: PostgreSQL can handle thousands of concurrent connections; use connection pooling (PgBouncer)
-- **Caching**: Redis is single-threaded; use Redis Cluster for horizontal scaling beyond 50K ops/sec
-- **Message Queue**: For 1000+ leases/day, consider upgrading from Redis Pub/Sub to RabbitMQ or Kafka
-- **Background Jobs**: Deploy dedicated Celery worker nodes for payment retries and scheduled tasks
-- **Load Balancing**: Use sticky sessions if implementing horizontal scaling of services
-
-### Monitoring & Alerting
-- **Application Metrics**: Expose metrics in Prometheus format; visualize in Grafana
-- **Database Monitoring**: Track slow queries, connection pool usage, and replication lag
-- **Error Tracking**: Integrate Sentry for exception monitoring and alerting
-- **Audit Trail**: Store event logs in S3 or data warehouse for compliance and analytics
-
-### Security Hardening
-- **API Authentication**: Add JWT or API key authentication to all endpoints
-- **Rate Limiting**: Prevent abuse with per-user and per-IP rate limits
-- **SQL Injection**: Always use parameterized queries (ORM handles this)
-- **CORS**: Restrict CORS headers to known client domains
-- **Secrets Management**: Store database credentials and API keys in Vault or AWS Secrets Manager
-
-### Disaster Recovery
-- **Database Backups**: Implement daily automated backups with point-in-time recovery
-- **Replication**: Set up PostgreSQL streaming replication to a standby server
-- **Event Replay**: Complete audit trail allows reconstructing system state at any point
-- **Test Failover**: Regularly test failover to ensure RTO/RPO targets are met
-
-## Future Enhancements
-
-### Short-term (1-3 months)
-- [ ] Add customer dashboard for tracking lease payments
-- [ ] Implement email notifications for payment reminders and failures
-- [ ] Add support for variable-rate leases (adjustable interest)
-- [ ] Implement automated payment retry scheduler with Celery Beat
-
-### Medium-term (3-6 months)
-- [ ] Add multi-tenant support with customer isolation
-- [ ] Implement lease transfer/assumption workflow
-- [ ] Add analytics dashboard with payment trends and defaults predictions
-- [ ] Implement graphQL API alongside REST for flexible querying
-
-### Long-term (6-12 months)
-- [ ] Machine learning model for default risk prediction
-- [ ] Dynamic pricing based on customer credit profile
-- [ ] Support for lease buyouts and prepayments with partial reconciliation
-- [ ] Integration with accounting systems (QuickBooks, SAP)
-- [ ] Integrate with external compliance systems (Plaid for bank verification, Alloy for KYC)
-
-## Testing Checklist
-
-Before deploying to production:
-- [ ] Run all tests: `pytest tests/ -v` (expect 86/86 passing)
-- [ ] Check coverage: `pytest --cov=services --cov=shared` (expect >55%)
-- [ ] Run load tests: `locust -f tests/load/locustfile.py` (test with 100+ concurrent users)
-- [ ] Run stress tests: `python tests/performance/stress_tests.py` (expect graceful degradation)
-- [ ] Verify idempotency: Retry requests multiple times, confirm no duplicates
-- [ ] Test event replay: Verify historical state reconstruction accuracy
+- **Replace simulated payment gateway** with real processor (Stripe, Square) in `services/payment_service/domain/payment_gateway.py`
+- **Never store raw card data** - use payment processor tokenization
+- **Validate webhook signatures** from payment processors to prevent replay attacks
+- **Add API rate limiting** on payment endpoints
+- **Implement database connection pooling** (PgBouncer) for PostgreSQL
+- **Add JWT or API key authentication** to all endpoints
 
 ## Troubleshooting
 
@@ -643,6 +571,14 @@ redis-cli ping  # Should return PONG
 docker-compose exec lease_service alembic downgrade base
 docker-compose exec lease_service alembic upgrade head
 ```
+
+## Testing Checklist
+
+- Run all tests: `pytest tests/ -v`
+- Check coverage: `pytest --cov=services --cov=shared`
+- Run load tests: `locust -f tests/load/locustfile.py`
+- Verify idempotency: Retry requests with same idempotency key
+- Test event replay: Verify historical state reconstruction
 
 ## License
 
