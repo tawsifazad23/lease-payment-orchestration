@@ -1,0 +1,54 @@
+{
+  "lease_creation": {
+    "name": "Lease Creation",
+    "count": 100,
+    "min": 8.52,
+    "max": 67.34,
+    "avg": 24.18,
+    "p50": 21.45,
+    "p95": 42.67,
+    "p99": 58.91,
+    "threshold": 50.0,
+    "meets_threshold": true,
+    "unit": "ms"
+  },
+  "lease_retrieval": {
+    "name": "Lease Retrieval",
+    "count": 100,
+    "min": 3.21,
+    "max": 18.94,
+    "avg": 7.83,
+    "p50": 7.12,
+    "p95": 14.23,
+    "p99": 17.45,
+    "threshold": 20.0,
+    "meets_threshold": true,
+    "unit": "ms"
+  },
+  "ledger_append": {
+    "name": "Ledger Append",
+    "count": 100,
+    "min": 5.67,
+    "max": 35.23,
+    "avg": 11.45,
+    "p50": 10.12,
+    "p95": 24.56,
+    "p99": 32.11,
+    "threshold": 30.0,
+    "meets_threshold": true,
+    "unit": "ms"
+  },
+  "ledger_history_retrieval": {
+    "name": "Ledger History Retrieval",
+    "count": 50,
+    "min": 22.34,
+    "max": 112.45,
+    "avg": 38.92,
+    "p50": 35.67,
+    "p95": 78.23,
+    "p99": 101.34,
+    "threshold": 100.0,
+    "meets_threshold": true,
+    "unit": "ms"
+  }
+}
