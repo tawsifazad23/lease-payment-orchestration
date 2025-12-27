@@ -277,7 +277,7 @@ Mean: 150ms, P95: 280ms, P99: 450ms
 
 ## Performance Baselines
 
-Current baseline measurements (as of Phase 7):
+Current baseline measurements:
 
 ### Database Operations (SQLite in-memory)
 
